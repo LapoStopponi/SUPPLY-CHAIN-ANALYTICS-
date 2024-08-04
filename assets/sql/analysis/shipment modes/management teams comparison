@@ -1,4 +1,5 @@
 --How do different shipment modes and management teams compare in terms of cost and profitability?
+```sql
 WITH Median AS (
     SELECT 
         shipment_mode,
@@ -39,3 +40,4 @@ SELECT
 FROM Median
 GROUP BY shipment_mode, managed_by
 ORDER BY avg_profit DESC;
+```
