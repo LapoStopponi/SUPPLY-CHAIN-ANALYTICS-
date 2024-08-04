@@ -1,3 +1,4 @@
+--How do different shipment modes and management teams compare in terms of cost and profitability?
 WITH Median AS (
     SELECT 
         shipment_mode,
