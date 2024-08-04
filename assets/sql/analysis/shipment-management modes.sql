@@ -1,5 +1,5 @@
 --How do different shipment modes and management teams compare in terms of cost and profitability?
-```sql
+
 WITH Median AS (
     SELECT 
         shipment_mode,
@@ -40,4 +40,11 @@ SELECT
 FROM Median
 GROUP BY shipment_mode, managed_by
 ORDER BY avg_profit DESC;
-```
+
+/*
+This query gives an overview of the profitability of different shipment modes and management teams. The shipment mode with the highest avg_freight_cost
+and with the highest avg_total_cost, is Air Charter managed by PMO-US, that is also the one with the highest avg_line_item_value, and the one with the 
+highest avg_profit and the one with the highest avg_profit_margin_percentage.
+I've also calculated the median to see if things changed because of outliers, and we can see that Air Charter still has the most expenses, 
+while the Ocean mode has the highest meadian line_item_value, the highest median_profit and the highest median_profit_margin_percentage.
+*/
