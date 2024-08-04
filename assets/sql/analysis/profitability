@@ -1,0 +1,42 @@
+WITH shipments_data AS
+(
+	SELECT
+		COUNT(*) AS shipment_count,
+		YEAR(delivered_to_client_date) AS year,
+		MONTH(delivered_to_client_date) AS month,
+		shipment_mode,
+		managed_by,
+		AVG(line_item_value)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)) AS avg_profit,
+		ROUND(((AVG(line_item_value)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)))/NULLIF(AVG(line_item_value),0))*100,2) AS avg_profit_margin_percentage
+	FROM supply_chain_n
+	GROUP BY YEAR(delivered_to_client_date),MONTH(delivered_to_client_date) , shipment_mode, managed_by
+	HAVING AVG(line_item_value)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)) > 0
+)
+SELECT 
+	*,
+	AVG(avg_profit) OVER(
+		PARTITION BY shipment_mode, managed_by
+		ORDER BY year, month
+		ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) three_month_moving_avg,
+	RANK () OVER(
+		PARTITION BY year, month
+		ORDER BY avg_profit DESC) AS profit_rank_within_month,
+	SUM(avg_profit) OVER(
+		PARTITION BY year, shipment_mode, managed_by
+		ORDER BY month) AS cumulative_yearly_profit,
+	avg_profit- AVG(avg_profit) OVER (
+	 PARTITION BY shipment_mode, managed_by) AS diff_from_overall_avg
+FROM shipments_data
+ORDER BY year, month, shipment_mode,managed_by;
+	
+-- I've create a CTE and the used it to work with differenct windows function, - I've calculated the three months moving average, 
+for example for the Truck shipment mode managed by PMO-US, for the year 2014, -> Insights: the moving avergage shows a big values range, 
+from about 5,6 million to 18 million. There's a clear peak in the middle of the series. The series ends higher than it stars. There are significant 
+changes between consecutive periods, indicating volatility. Largest increase between 4th and 5th values. Largest decrease between 7th and 8th values. 
+Despite fluctuations, there's a general upward tren from the beginning to the end of the series. -I've calculated the cumulative_yearly_profit, 
+that displays the cumulative profitability over the year, providing a sense of how profitability builds up over time. Taking as example the year 2008,
+for Air shipment_mode managed by PMO-US, we can see that there is a significat drop from the first to the second value, but from the secon value onward, 
+the trend is upward. The growth rate seems to slow down towards the end of the series. -I've also calulated the difference fro overall average, this
+highlights the deviations from the overall average profitability, pinpointing months that perform better or worse than average, while all the other
+months have less profitability than the overall average.
+*/
