@@ -181,7 +181,6 @@ SELECT
 	ROUND(AVG(freight_cost_usd),2) AS avg_freight_cost
 FROM supply_chain_n;
 ```
-[Overview of shipments and costs](https://github.com/LapoStopponi/SUPPLY-CHAIN-ANALYTICS-/blob/main/assets/overview%20of%20shipments%20and%20costs.png?raw=true)
 The total number of shipments is 10,324, the total quantity is 189,265,090, the average unit price is $29, the total value is $56,112,867,105, the average freight cost is $11103.23.
 
 2. Then I looked for: "Shipping performances across different modes and management teams."
