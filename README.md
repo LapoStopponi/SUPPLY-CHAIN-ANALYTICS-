@@ -218,7 +218,8 @@ WITH Median AS (
         line_item_value,
         PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY freight_cost_usd) OVER (PARTITION BY shipment_mode, managed_by) AS median_freight_cost,
         PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY line_item_insurance_usd) OVER (PARTITION BY shipment_mode, managed_by) AS median_insurance_cost,
-        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY line_item_value) OVER (PARTITION BY shipment_mode, managed_by) AS median_line_item_value
+        PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY line_item_value) OVER (PARTITION BY shipment_mode, managed_by) AS median_line_item_value,
+	PERCENTILE_CONT(0.5) WITHING GROUP (ORDER BY line_item_quantity) OVER (PARTITION BY shipment_mode, managed by) AS median_line_item_quantity
     FROM supply_chain_n
 )
 SELECT 
@@ -229,20 +230,20 @@ SELECT
     AVG(line_item_insurance_usd) AS avg_insurance_cost,
 	AVG(freight_cost_usd) + AVG(line_item_insurance_usd) AS avg_total_cost,
     AVG(line_item_value) AS avg_line_item_value,
-    AVG(line_item_value) - (AVG(freight_cost_usd) + AVG(line_item_insurance_usd)) AS avg_profit,
+    AVG(line_item_value * line_item_quantity) - (AVG(freight_cost_usd) + AVG(line_item_insurance_usd)) AS avg_profit,
     ROUND(
         (
-            (AVG(line_item_value) - (AVG(freight_cost_usd) + AVG(line_item_insurance_usd)))
+            AVG(line_item_value * line_item_quantity) - (AVG(freight_cost_usd) + AVG(line_item_insurance_usd))))
             / NULLIF(AVG(line_item_value), 0)
         ) * 100, 2
     ) AS avg_profit_margin_percentage,
     MAX(median_freight_cost) AS median_freight_cost,
     MAX(median_insurance_cost) AS median_insurance_cost,
     MAX(median_line_item_value) AS median_line_item_value,
-    MAX(median_line_item_value) - (MAX(median_freight_cost) + MAX(median_insurance_cost)) AS median_profit,
+   ( MAX(median_line_item_value)* MAX(median_line_item_quantity)) - (MAX(median_freight_cost) + MAX(median_insurance_cost)) AS median_profit,
     ROUND(
         (
-            (MAX(median_line_item_value) - (MAX(median_freight_cost) + MAX(median_insurance_cost)))
+            ((MAX(median_line_item_value)* MAX(median_line_item_quantity))  - (MAX(median_freight_cost) + MAX(median_insurance_cost)))
             / NULLIF(MAX(median_line_item_value), 0)
         ) * 100, 2
     ) AS median_profit_margin_percentage
@@ -266,8 +267,8 @@ WITH shipments_data AS
 		MONTH(delivered_to_client_date) AS month,
 		shipment_mode,
 		managed_by,
-		AVG(line_item_value)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)) AS avg_profit,
-		ROUND(((AVG(line_item_value)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)))/NULLIF(AVG(line_item_value),0))*100,2) AS avg_profit_margin_percentage
+		AVG(line_item_value * median_line_item_quantity)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)) AS avg_profit,
+		ROUND(((AVG(line_item_value * line_item_quantity)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)))/NULLIF(AVG(line_item_value),0))*100,2) AS avg_profit_margin_percentage
 	FROM supply_chain_n
 	GROUP BY YEAR(delivered_to_client_date),MONTH(delivered_to_client_date) , shipment_mode, managed_by
 	HAVING AVG(line_item_value)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)) > 0
@@ -305,7 +306,7 @@ months have less profitability than the overall average.
 SELECT
 	COUNT(*) AS num_shipment,
 	country,
-	ROUND(AVG(line_item_value)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)),2) AS avg_profit
+	ROUND(AVG(line_item_value * line_item_quantity)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)),2) AS avg_profit
 FROM supply_chain_n
 GROUP BY country
 HAVING COUNT(*) >= 100
@@ -318,7 +319,7 @@ The least profitable country is South Sudan, with an average profit of only $182
 SELECT
 	COUNT(*) AS num_shipment,
 	country, 
-	ROUND(AVG(line_item_value)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)),2) AS avg_profit
+	ROUND(AVG(line_item_value * line_item_quantity)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)),2) AS avg_profit
 FROM supply_chain_n
 GROUP BY country
 HAVING COUNT(*) >= 100
@@ -333,7 +334,7 @@ most profitable with $ 10914602.89.
 SELECT
 	COUNT(*) AS num_shipments,
 	manifacturing_site_country,
-	ROUND(AVG(line_item_value)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)),2) AS avg_profit
+	ROUND(AVG(line_item_value * line_item_quantity)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)),2) AS avg_profit
 FROM supply_chain_n
 GROUP BY manifacturing_site_country
 HAVING COUNT(*) > 100
@@ -346,7 +347,7 @@ is the country where the manufacturing sites have the highest average profit and
 SELECT
 	COUNT(*) AS num_shipments,
 	manifacturing_site_country,
-	ROUND(AVG(line_item_value)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)),2) AS avg_profit
+	ROUND(AVG(line_item_value * line_item_quantity)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)),2) AS avg_profit
 FROM supply_chain_n
 GROUP BY manifacturing_site_country
 HAVING COUNT(*) > 100
@@ -360,7 +361,7 @@ SELECT
 	COUNT(*) AS num_shipment,
 	manifacturing_site_country,
 	country,
-	ROUND(AVG(line_item_value)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)),2) AS avg_profit
+	ROUND(AVG(line_item_value * line_item_quantity)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)),2) AS avg_profit
 FROM supply_chain_n
 GROUP BY manifacturing_site_country, country
 HAVING COUNT(*) >= 100
@@ -373,7 +374,7 @@ SELECT
 	COUNT(*) AS num_shipment,
 	manifacturing_site_country,
 	country,
-	ROUND(AVG(line_item_value)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)),2) AS avg_profit
+	ROUND(AVG(line_item_value * line_item_quantity)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)),2) AS avg_profit
 FROM supply_chain_n
 WHERE manifacturing_site_country IS NOT NULL
 GROUP BY manifacturing_site_country, country
@@ -390,8 +391,8 @@ WITH product_metrics AS
 		product_group,
 		sub_classification,
 		COUNT(*) AS num_shipment,
-		ROUND(AVG(line_item_value)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)),2) AS avg_profit,
-		ROUND((AVG(line_item_value)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)))/ COUNT(*),2) AS avg_profit_per_shipment
+		ROUND(AVG(line_item_value * line_item_quantity)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)),2) AS avg_profit,
+		ROUND((AVG(line_item_value * line_item_quantity)-(AVG(freight_cost_usd) + AVG(line_item_insurance_usd)))/ COUNT(*),2) AS avg_profit_per_shipment
 	FROM supply_chain_n
 	GROUP BY product_group, sub_classification
 )
